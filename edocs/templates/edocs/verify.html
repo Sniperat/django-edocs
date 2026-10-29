@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hujjatni tekshirish | django-edocs</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 20px 12px;
+        }
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .header {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .body {
+            padding: 24px 20px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+        .badge-success { background: #dcfce7; color: var(--success); }
+        .badge-warning { background: #fef9c3; color: var(--warning); }
+        .info-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 14px;
+        }
+        .info-label { color: var(--text-muted); }
+        .info-value { font-weight: 600; text-align: right; word-break: break-all; }
+        .hash { font-family: monospace; font-size: 11px; max-width: 280px; }
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 20px 0 12px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .signer-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            background: #f8fafc;
+        }
+        .signer-card.signed {
+            border-left: 4px solid var(--success);
+        }
+        .signer-card.pending {
+            border-left: 4px solid var(--warning);
+        }
+        .signer-name {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .signer-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .actions {
+            margin-top: 24px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            width: 100%;
+        }
+        .btn:hover { opacity: 0.9; }
+        .footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Elektron Hujjatni Tasdiqlash</h1>
+            <p>Hujjatning haqiqiyligi va E-IMZO raqamli imzolari tekshiruvi</p>
+        </div>
+        <div class="body">
+            <div style="text-align: center;">
+                {% if document.is_signed %}
+                    <span class="badge badge-success">✔ To'liq tasdiqlangan va imzolangan</span>
+                {% else %}
+                    <span class="badge badge-warning">⏳ Imzolanish jarayonida</span>
+                {% endif %}
+            </div>
+
+            <div class="info-grid">
+                <div class="info-row">
+                    <span class="info-label">Hujjat nomi</span>
+                    <span class="info-value">{{ document.document_name|default:document.name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Takrorlanmas ID (GUID)</span>
+                    <span class="info-value">{{ document.guid }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Xavfsizlik kodi</span>
+                    <span class="info-value" style="color: var(--primary); font-size: 16px;">{{ document.security_code }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Yaratilgan sana</span>
+                    <span class="info-value">{{ document.created_at|date:"d.m.Y H:i" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fayl heshi (SHA-256)</span>
+                    <span class="info-value hash">{{ document.file_hash|default:"Mavjud emas" }}</span>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>Raqamli imzolar ro'yxati ({{ document.signers_count }}/{{ signers.count }})</span>
+            </div>
+
+            {% for signer in signers %}
+                <div class="signer-card {% if signer.signed %}signed{% else %}pending{% endif %}">
+                    <div class="signer-name">
+                        #{{ signer.order|add:1 }} {{ signer.signer_title|default:"Imzolovchi" }}
+                        {% if signer.signed %}
+                            <span style="color: var(--success); font-size: 12px; margin-left: 6px;">✔ Imzolangan</span>
+                        {% else %}
+                            <span style="color: var(--warning); font-size: 12px; margin-left: 6px;">⏳ Kutilmoqda</span>
+                        {% endif %}
+                    </div>
+                    <div class="signer-meta">
+                        {% if signer.signer %}
+                            F.I.SH: {{ signer.signer.get_full_name|default:signer.signer }}
+                        {% endif %}
+                        {% if signer.tin %}
+                            | STIR/PINFL: {{ signer.tin }}
+                        {% endif %}
+                    </div>
+                    {% if signer.signed %}
+                        <div class="signer-meta">
+                            Imzolangan vaqti: {{ signer.sign_date|date:"d.m.Y H:i:s" }}
+                            {% if signer.certificate_info.serialNumber %}
+                                | Sertifikat: {{ signer.certificate_info.serialNumber }}
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p style="font-size: 13px; color: var(--text-muted);">Imzolovchilar belgilanmagan.</p>
+            {% endfor %}
+
+            {% if document.pdf_file %}
+                <div class="actions">
+                    <a href="{% url 'edocs:preview' document.guid %}" class="btn" target="_blank">
+                        📄 Asl PDF hujjatni ko'rish va yuklab olish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        <div class="footer">
+            Ushbu hujjat <strong>django-edocs</strong> elektron tizimi orqali himoyalangan va tasdiqlangan.
+        </div>
+    </div>
+</body>
+</html>
