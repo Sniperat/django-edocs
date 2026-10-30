@@ -24,11 +24,22 @@ class EImzoService:
 
         try:
             logging.info(f"Connecting to E-IMZO verification endpoint: {endpoint}")
+            # Try raw body first (standard for backend/pkcs7/verify/attached endpoints)
             response = requests.post(
                 endpoint,
-                json={"pkcs7": pkcs7, "hash": document_hash},
-                timeout=10,
+                data=pkcs7,
+                headers={"Content-Type": "text/plain"},
+                timeout=15,
             )
+            # If not 200, try json payload (for endpoints expecting {"pkcs7": ...})
+            if response.status_code != 200:
+                response = requests.post(
+                    endpoint,
+                    json={"pkcs7": pkcs7, "hash": document_hash},
+                    headers={"Content-Type": "application/json"},
+                    timeout=15,
+                )
+
             if response.status_code == 200:
                 result = response.json()
                 logging.info(f"E-IMZO verification succeeded: {result}")

@@ -27,6 +27,9 @@ class AppSettings:
         setting_name = f"{self.PREFIX}{name}"
         value = getattr(settings, setting_name, None)
 
+        if value is None and name == "VERIFY_URL":
+            value = getattr(settings, "EIMZO_VERIFY_URL", None)
+
         if value is None:
             default = self.DEFAULTS[name]
             if name == "ENABLE_LOCAL_FALLBACK" and default is None:
