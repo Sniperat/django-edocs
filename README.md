@@ -70,14 +70,18 @@ Ixtiyoriy sozlamalar:
 ```python
 # settings.py
 
-# 1. E-IMZO PKCS#7 imzoni tekshirish uchun server manzili (Production uchun muhim):
-EDOCS_VERIFY_URL = "https://e-imzo.server.uz/backend/pkcs7/verify/attached"
+# 1. E-IMZO PKCS#7 imzoni tekshirish uchun server manzili (Production uchun):
+# O'zingizning tashkilotingiz yoki provayderingizning E-IMZO tekshirish URL manzilini ko'rsating.
+# EIMZO_VERIFY_URL nomi bilan ham ko'rsatish mumkin.
+EDOCS_VERIFY_URL = "https://<sizning-e-imzo-serveringiz>/backend/pkcs7/verify/attached"
+# yoki:
+# EIMZO_VERIFY_URL = "https://<sizning-e-imzo-serveringiz>/backend/pkcs7/verify/attached"
 
 # 2. Rivojlantirish muhitida (DEBUG=True) tashqi server ulanmasa avtomatik lokal fallback qilish:
 EDOCS_ENABLE_LOCAL_FALLBACK = True  # Standart holatda settings.DEBUG ga teng
 
-# 3. QR kod skaner qilinganda yo'naltiriladigan URL (bo'sh bo'lsa ichki /api/edocs/verify/<guid>/ ishlatiladi):
-EDOCS_VERIFY_FRONTEND_URL = "https://myportal.uz/edocs/verify"
+# 3. QR kod skaner qilinganda yo'naltiriladigan tashqi frontend URL (ixtiyoriy, ko'rsatilmasa ichki /api/edocs/verify/<guid>/ sahifasi ishlatiladi):
+EDOCS_VERIFY_FRONTEND_URL = "https://<sizning-frontend-saytingiz>/edocs/verify"
 
 # 4. Word fayllarni PDF ga o'giruvchi LibreOffice manzili:
 EDOCS_LIBREOFFICE_PATH = "libreoffice"  # yoki "/usr/bin/libreoffice"
@@ -164,15 +168,17 @@ contract.save()
 
 ## 🔑 Brauzerda E-IMZO bilan imzolash (Frontend)
 
-Paket ichida tayyor `eimzo-client.js` mavjud:
+Paket ichida rasmiy E-IMZO WebSocket drayverlari va tayyor `eimzo-client.js` mavjud:
 
 ```html
+<script src="/static/edocs/js/e-imzo.js"></script>
+<script src="/static/edocs/js/e-imzo-client.js"></script>
 <script src="/static/edocs/js/eimzo-client.js"></script>
 <script>
-  // 1. E-IMZO moduli ochiqligini tekshirish
+  // 1. E-IMZO moduli ochiqligini tekshirish (WebSocket 64646 / 64443)
   EImzoClient.checkAgent().then(isOnline => {
     if (!isOnline) {
-      alert("Iltimos, E-IMZO dasturini ishga tushiring!");
+      alert("Iltimos, kompyuteringizda E-IMZO dasturini ishga tushiring!");
       return;
     }
 

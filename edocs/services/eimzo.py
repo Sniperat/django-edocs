@@ -22,34 +22,35 @@ class EImzoService:
         endpoint = edocs_settings.VERIFY_URL
         cert_info = certificate_info or {}
 
-        try:
-            logging.info(f"Connecting to E-IMZO verification endpoint: {endpoint}")
-            # Try raw body first (standard for backend/pkcs7/verify/attached endpoints)
-            response = requests.post(
-                endpoint,
-                data=pkcs7,
-                headers={"Content-Type": "text/plain"},
-                timeout=15,
-            )
-            # If not 200, try json payload (for endpoints expecting {"pkcs7": ...})
-            if response.status_code != 200:
+        if endpoint:
+            try:
+                logging.info(f"Connecting to E-IMZO verification endpoint: {endpoint}")
+                # Try raw body first (standard for backend/pkcs7/verify/attached endpoints)
                 response = requests.post(
                     endpoint,
-                    json={"pkcs7": pkcs7, "hash": document_hash},
-                    headers={"Content-Type": "application/json"},
+                    data=pkcs7,
+                    headers={"Content-Type": "text/plain"},
                     timeout=15,
                 )
+                # If not 200, try json payload (for endpoints expecting {"pkcs7": ...})
+                if response.status_code != 200:
+                    response = requests.post(
+                        endpoint,
+                        json={"pkcs7": pkcs7, "hash": document_hash},
+                        headers={"Content-Type": "application/json"},
+                        timeout=15,
+                    )
 
-            if response.status_code == 200:
-                result = response.json()
-                logging.info(f"E-IMZO verification succeeded: {result}")
-                return result
-            else:
-                logging.warning(
-                    f"E-IMZO server returned status {response.status_code}: {response.text[:300]}"
-                )
-        except Exception as e:
-            logging.warning(f"Could not reach E-IMZO server ({endpoint}): {e}")
+                if response.status_code == 200:
+                    result = response.json()
+                    logging.info(f"E-IMZO verification succeeded: {result}")
+                    return result
+                else:
+                    logging.warning(
+                        f"E-IMZO server returned status {response.status_code}: {response.text[:300]}"
+                    )
+            except Exception as e:
+                logging.warning(f"Could not reach E-IMZO server ({endpoint}): {e}")
 
         # Local development / fallback response if allowed
         if edocs_settings.ENABLE_LOCAL_FALLBACK:

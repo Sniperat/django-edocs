@@ -8,6 +8,7 @@ dist/
 build/
 *.egg-info/
 .eggs/
+.old_*
 
 # Environments
 .env

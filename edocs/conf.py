@@ -10,7 +10,7 @@ class AppSettings:
     PREFIX = "EDOCS_"
 
     DEFAULTS = {
-        "VERIFY_URL": "https://e-imzo.server.uz/backend/pkcs7/verify/attached",
+        "VERIFY_URL": "",
         "VERIFY_FRONTEND_URL": "",
         "LIBREOFFICE_PATH": "libreoffice",
         "ENABLE_LOCAL_FALLBACK": None,  # Defaults to settings.DEBUG if not set
