@@ -99,7 +99,8 @@
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Accept': 'application/json'
+                  'Accept': 'application/json',
+                  'X-CSRFToken': self.getCsrfToken()
                 },
                 body: JSON.stringify({
                   pkcs7: pkcs7,
@@ -109,6 +110,11 @@
             });
           });
         });
+    },
+
+    getCsrfToken: function () {
+      var match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
+      return match ? match[2] : '';
     }
   };
 
