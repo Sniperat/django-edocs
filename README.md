@@ -69,9 +69,21 @@ INSTALLED_APPS = [
 Ixtiyoriy sozlamalar:
 ```python
 # settings.py
-EDOCS_VERIFY_FRONTEND_URL = "https://myportal.uz/edocs/verify" # QR kod skaner qilinganda yo'naltiriladigan URL
-EDOCS_LIBREOFFICE_PATH = "libreoffice" # yoki "/usr/bin/libreoffice"
-EDOCS_SIGNER_MODEL = "auth.User" # yoki o'zingizning maxsus xodim/rol modelingiz
+
+# 1. E-IMZO PKCS#7 imzoni tekshirish uchun server manzili (Production uchun muhim):
+EDOCS_VERIFY_URL = "https://e-imzo.server.uz/backend/pkcs7/verify/attached"
+
+# 2. Rivojlantirish muhitida (DEBUG=True) tashqi server ulanmasa avtomatik lokal fallback qilish:
+EDOCS_ENABLE_LOCAL_FALLBACK = True  # Standart holatda settings.DEBUG ga teng
+
+# 3. QR kod skaner qilinganda yo'naltiriladigan URL (bo'sh bo'lsa ichki /api/edocs/verify/<guid>/ ishlatiladi):
+EDOCS_VERIFY_FRONTEND_URL = "https://myportal.uz/edocs/verify"
+
+# 4. Word fayllarni PDF ga o'giruvchi LibreOffice manzili:
+EDOCS_LIBREOFFICE_PATH = "libreoffice"  # yoki "/usr/bin/libreoffice"
+
+# 5. Imzolovchilar modeli (User, Xodim, Rol):
+EDOCS_SIGNER_MODEL = "auth.User"
 ```
 
 ### 2. Ma'lumotlar bazasini yangilang
