@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from edocs.conf import edocs_settings
-from edocs.signals import document_fully_signed
+from edocs.signals import document_fully_signed, document_signer_signed
 
 
 class Document(models.Model):
@@ -98,6 +98,19 @@ class Document(models.Model):
                     pass
         return None
 
+    @property
+    def is_rejected_or_cancelled(self) -> bool:
+        """Returns True if the document's host/related object has been rejected or cancelled."""
+        host = self.host_object
+        if not host:
+            return False
+        if getattr(host, "rejected", False) or getattr(host, "archived", False):
+            return True
+        status_val = getattr(host, "status", None)
+        if status_val in ("rejected", "cancelled", "archived"):
+            return True
+        return False
+
     class Meta:
         verbose_name = _("Elektron hujjat")
         verbose_name_plural = _("Elektron hujjatlar")
@@ -122,11 +135,18 @@ class Document(models.Model):
             return False
         return current.signer == signer_obj
 
-    def mark_signed_step(self, signer_obj, pkcs7: str, cert_info: dict, verification_info: dict = None):
+    def mark_signed_step(self, signer_obj, pkcs7: str, cert_info: dict = None, verification_info: dict = None):
         """
         Advances the signing sequence for the current pending signer.
         Updates document counts, marks completion if last one, and emits signals.
         """
+        cert_info = cert_info or {}
+        if self.is_signed:
+            raise ValueError("Ushbu hujjat allaqachon to'liq imzolangan.")
+
+        if self.is_rejected_or_cancelled:
+            raise ValueError("Rad etilgan yoki bekor qilingan hujjatga imzo qo'yib bo'lmaydi.")
+
         pending = self.document_signers.filter(signed=False).order_by("order").first()
         if not pending:
             raise ValueError("Barcha imzolovchilar allaqachon imzolab bo'lgan.")
@@ -142,6 +162,15 @@ class Document(models.Model):
         pending.verification_info = verification_info or {}
         pending.save()
 
+        # Emit signal for individual signer
+        document_signer_signed.send(
+            sender=self.__class__,
+            document=self,
+            signer=pending,
+            user=signer_obj,
+            related_object=self.host_object,
+        )
+
         # Update document aggregates
         signed_count = self.document_signers.filter(signed=True).count()
         total_count = self.document_signers.count()
@@ -150,8 +179,24 @@ class Document(models.Model):
         if signed_count >= total_count or pending.last_one:
             self.is_signed = True
             self.save(update_fields=["signers_count", "is_signed", "updated_at"])
-            document_fully_signed.send(sender=self.__class__, document=self, related_object=self.related_object)
+
+            # Update host object status if it exists and has status field
+            host = self.host_object
+            if host and hasattr(host, "status"):
+                host.status = "signed"
+                if hasattr(host, "is_changeable"):
+                    host.is_changeable = False
+                    host.save(update_fields=["status", "is_changeable"])
+                else:
+                    host.save(update_fields=["status"])
+
+            document_fully_signed.send(sender=self.__class__, document=self, related_object=self.host_object)
         else:
             self.save(update_fields=["signers_count", "updated_at"])
+            # Update host object status to pending if not already
+            host = self.host_object
+            if host and hasattr(host, "status") and host.status == "new":
+                host.status = "pending"
+                host.save(update_fields=["status"])
 
         return pending

@@ -105,3 +105,65 @@ def test_document_public_verify_api(api_setup):
     res_html = client.get(verify_url, HTTP_ACCEPT="text/html")
     assert res_html.status_code == 200
     assert "text/html" in res_html["Content-Type"]
+
+
+@pytest.mark.django_db
+def test_cannot_sign_rejected_or_cancelled_document(api_setup):
+    client = Client()
+    client.force_login(api_setup["user1"])
+
+    # Reject the contract first
+    api_setup["contract"].status = "rejected"
+    api_setup["contract"].rejected = True
+    api_setup["contract"].save()
+
+    # 1. Challenge endpoint should disallow signing
+    challenge_url = reverse("edocs:challenge", kwargs={"guid": api_setup["doc"].guid})
+    res = client.get(challenge_url)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["can_sign"] is False
+    assert data["can_reject"] is False
+    assert data["can_cancel"] is False
+    assert data["is_rejected"] is True
+
+    # 2. Sign endpoint should return 400 Bad Request
+    sign_url = reverse("edocs:sign", kwargs={"guid": api_setup["doc"].guid})
+    payload = {"pkcs7": "MOCK_PKCS7_PAYLOAD"}
+    res_sign = client.post(sign_url, data=json.dumps(payload), content_type="application/json")
+    assert res_sign.status_code == 400
+    assert "Rad etilgan yoki bekor qilingan" in res_sign.json()["message"]
+
+
+@pytest.mark.django_db
+def test_cannot_sign_already_signed_document(api_setup):
+    client = Client()
+    client.force_login(api_setup["user1"])
+
+    api_setup["doc"].is_signed = True
+    api_setup["doc"].save()
+
+    sign_url = reverse("edocs:sign", kwargs={"guid": api_setup["doc"].guid})
+    payload = {"pkcs7": "MOCK_PKCS7_PAYLOAD"}
+    res_sign = client.post(sign_url, data=json.dumps(payload), content_type="application/json")
+    assert res_sign.status_code == 400
+    assert "allaqachon to'liq imzolangan" in res_sign.json()["message"]
+
+
+@pytest.mark.django_db
+def test_eimzo_down_returns_503(api_setup):
+    from unittest.mock import patch
+    from edocs.exceptions import EImzoVerificationError
+
+    client = Client()
+    client.force_login(api_setup["user1"])
+
+    sign_url = reverse("edocs:sign", kwargs={"guid": api_setup["doc"].guid})
+    payload = {"pkcs7": "MOCK_PKCS7_PAYLOAD"}
+
+    with patch("edocs.api.views.EImzoService.verify_pkcs7", side_effect=EImzoVerificationError("E-IMZO server javob bermadi")):
+        res_sign = client.post(sign_url, data=json.dumps(payload), content_type="application/json")
+        assert res_sign.status_code == 503
+        data = res_sign.json()
+        assert data["success"] is False
+        assert "E-IMZO server javob bermadi" in data["message"]

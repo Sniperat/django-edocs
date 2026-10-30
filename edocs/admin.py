@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from edocs.models.document import Document
 from edocs.models.signer import DocumentSigner
@@ -62,15 +63,15 @@ class DocumentAdmin(admin.ModelAdmin):
 
     def signed_badge(self, obj):
         if obj.is_signed:
-            return format_html('<span style="color: green; font-weight: bold;">✔ Imzolangan</span>')
-        return format_html('<span style="color: orange; font-weight: bold;">⏳ Kutilmoqda</span>')
+            return mark_safe('<span style="color: green; font-weight: bold;">✔ Imzolangan</span>')
+        return mark_safe('<span style="color: orange; font-weight: bold;">⏳ Kutilmoqda</span>')
     signed_badge.short_description = _("Status")
 
     def files_link(self, obj):
         links = []
         if obj.docx_file:
-            links.append(f'<a href="{obj.docx_file.url}" target="_blank">DOCX</a>')
+            links.append(format_html('<a href="{}" target="_blank">DOCX</a>', obj.docx_file.url))
         if obj.pdf_file:
-            links.append(f'<a href="{obj.pdf_file.url}" target="_blank">PDF</a>')
-        return format_html(" | ".join(links)) if links else "-"
+            links.append(format_html('<a href="{}" target="_blank">PDF</a>', obj.pdf_file.url))
+        return mark_safe(" | ".join(links)) if links else "-"
     files_link.short_description = _("Fayllar")

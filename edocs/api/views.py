@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from edocs.api.serializers import ActionNoteSerializer, DocumentDetailSerializer, SignRequestSerializer
+from edocs.exceptions import EImzoVerificationError
 from edocs.models.document import Document
 from edocs.services.eimzo import EImzoService
 from edocs.services.engine import DocumentEngine
@@ -37,21 +38,23 @@ class DocumentChallengeAPIView(APIView):
         can_cancel = False
 
         related = document.host_object
+        is_blocked = document.is_signed or document.is_rejected_or_cancelled
 
-        if current_signer and current_signer.signer == request.user:
-            can_sign = not document.is_signed
+        if current_signer and current_signer.signer == request.user and not is_blocked:
+            can_sign = True
 
-        if related and hasattr(related, "can_reject"):
-            can_reject = related.can_reject(request.user)
-        elif current_signer and current_signer.signer == request.user:
-            can_reject = not document.is_signed
+        if not is_blocked:
+            if related and hasattr(related, "can_reject"):
+                can_reject = related.can_reject(request.user)
+            elif current_signer and current_signer.signer == request.user:
+                can_reject = True
 
-        if related and hasattr(related, "can_cancel"):
-            can_cancel = related.can_cancel(request.user)
-        else:
-            first_signer = document.document_signers.order_by("order").first()
-            if first_signer and first_signer.signer == request.user:
-                can_cancel = not document.is_signed
+            if related and hasattr(related, "can_cancel"):
+                can_cancel = related.can_cancel(request.user)
+            else:
+                first_signer = document.document_signers.order_by("order").first()
+                if first_signer and first_signer.signer == request.user:
+                    can_cancel = True
 
         serializer = DocumentDetailSerializer(document)
 
@@ -64,7 +67,7 @@ class DocumentChallengeAPIView(APIView):
             "can_sign": can_sign,
             "can_reject": can_reject,
             "can_cancel": can_cancel,
-            "is_rejected": getattr(related, "rejected", False) if related else False,
+            "is_rejected": document.is_rejected_or_cancelled or (getattr(related, "rejected", False) if related else False),
             "document": serializer.data,
         })
 
@@ -79,6 +82,18 @@ class DocumentSignAPIView(APIView):
     def post(self, request, guid):
         document = get_object_or_404(Document, guid=guid)
 
+        if document.is_signed:
+            return Response(
+                {"success": False, "message": "Ushbu hujjat allaqachon to'liq imzolangan."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if document.is_rejected_or_cancelled:
+            return Response(
+                {"success": False, "message": "Rad etilgan yoki bekor qilingan hujjatga imzo qo'yib bo'lmaydi."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = SignRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -86,18 +101,24 @@ class DocumentSignAPIView(APIView):
         cert_info = serializer.validated_data.get("certificate_info", {})
 
         # Verify signature with E-IMZO
-        verification = EImzoService.verify_pkcs7(
-            pkcs7=pkcs7,
-            document_hash=document.file_hash,
-            certificate_info=cert_info
-        )
+        try:
+            verification = EImzoService.verify_pkcs7(
+                pkcs7=pkcs7,
+                document_hash=document.file_hash,
+                certificate_info=cert_info,
+            )
+        except EImzoVerificationError as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         try:
             document.mark_signed_step(
                 signer_obj=request.user,
                 pkcs7=pkcs7,
                 cert_info=cert_info,
-                verification_info=verification
+                verification_info=verification,
             )
         except ValueError as e:
             return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -119,6 +140,12 @@ class DocumentRejectAPIView(APIView):
 
     def post(self, request, guid):
         document = get_object_or_404(Document, guid=guid)
+
+        if document.is_signed:
+            return Response({"success": False, "message": "Imzolangan hujjatni rad etib bo'lmaydi."}, status=status.HTTP_400_BAD_REQUEST)
+        if document.is_rejected_or_cancelled:
+            return Response({"success": False, "message": "Ushbu hujjat allaqachon rad etilgan yoki bekor qilingan."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ActionNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -145,6 +172,12 @@ class DocumentCancelAPIView(APIView):
 
     def post(self, request, guid):
         document = get_object_or_404(Document, guid=guid)
+
+        if document.is_signed:
+            return Response({"success": False, "message": "Imzolangan hujjatni bekor qilib bo'lmaydi."}, status=status.HTTP_400_BAD_REQUEST)
+        if document.is_rejected_or_cancelled:
+            return Response({"success": False, "message": "Ushbu hujjat allaqachon rad etilgan yoki bekor qilingan."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ActionNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
