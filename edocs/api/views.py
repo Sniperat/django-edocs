@@ -36,7 +36,7 @@ class DocumentChallengeAPIView(APIView):
         can_reject = False
         can_cancel = False
 
-        related = document.related_object
+        related = document.host_object
 
         if current_signer and current_signer.signer == request.user:
             can_sign = not document.is_signed
@@ -48,6 +48,10 @@ class DocumentChallengeAPIView(APIView):
 
         if related and hasattr(related, "can_cancel"):
             can_cancel = related.can_cancel(request.user)
+        else:
+            first_signer = document.document_signers.order_by("order").first()
+            if first_signer and first_signer.signer == request.user:
+                can_cancel = not document.is_signed
 
         serializer = DocumentDetailSerializer(document)
 
@@ -119,7 +123,7 @@ class DocumentRejectAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         note = serializer.validated_data.get("note", "")
-        related = document.related_object
+        related = document.host_object
 
         if related and hasattr(related, "reject_me"):
             try:
@@ -145,7 +149,7 @@ class DocumentCancelAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         note = serializer.validated_data.get("note", "")
-        related = document.related_object
+        related = document.host_object
 
         if related and hasattr(related, "cancel_me"):
             try:

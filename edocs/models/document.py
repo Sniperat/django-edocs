@@ -83,6 +83,21 @@ class Document(models.Model):
     created_at = models.DateTimeField(_("Yaratilgan sana"), auto_now_add=True)
     updated_at = models.DateTimeField(_("O'zgartirilgan sana"), auto_now=True)
 
+    @property
+    def host_object(self):
+        """Returns the attached host business model instance."""
+        if self.related_object:
+            return self.related_object
+        for rel in self._meta.related_objects:
+            if rel.one_to_one and hasattr(self, rel.get_accessor_name()):
+                try:
+                    obj = getattr(self, rel.get_accessor_name())
+                    if obj:
+                        return obj
+                except Exception:
+                    pass
+        return None
+
     class Meta:
         verbose_name = _("Elektron hujjat")
         verbose_name_plural = _("Elektron hujjatlar")

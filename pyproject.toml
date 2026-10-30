@@ -57,10 +57,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/django-edocs/django-edocs"
-Repository = "https://github.com/django-edocs/django-edocs.git"
-Documentation = "https://github.com/django-edocs/django-edocs#readme"
-"Bug Tracker" = "https://github.com/django-edocs/django-edocs/issues"
+Homepage = "https://github.com/Sniperat/django-edocs"
+Repository = "https://github.com/Sniperat/django-edocs.git"
+Documentation = "https://github.com/Sniperat/django-edocs#readme"
+"Bug Tracker" = "https://github.com/Sniperat/django-edocs/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
